@@ -1,0 +1,585 @@
+{
+  "product": {
+    "name": "Rust Personal Finance CLI",
+    "version": "1.0.0",
+    "description": "A command-line application for personal finance management using double-entry accounting with text-based ledger files",
+    "repository": "https://github.com/mfurquimdev/personal-finance"
+  },
+  "overview": {
+    "summary": "Create a Rust-based CLI application for personal finance management that supports text-based double-entry accounting. The application will parse ledger files (similar to Ledger/hledger format), validate double-entry rules, and generate financial reports.",
+    "goals": [
+      "Provide a robust command-line tool for personal finance tracking",
+      "Enforce double-entry accounting principles automatically",
+      "Support multi-currency transactions",
+      "Generate standard financial reports (balance sheet, income statement)",
+      "Offer clear error messages and validation feedback",
+      "Maintain human-readable plain text ledger files"
+    ],
+    "target_users": [
+      "Individuals managing personal finances",
+      "Users familiar with Ledger/hledger/Beancount tools",
+      "Developers and technical users comfortable with CLI tools",
+      "Anyone wanting precise control over financial data"
+    ]
+  },
+  "phases": [
+    {
+      "id": "phase-1",
+      "name": "Project Setup & Core Models",
+      "description": "Initialize the Rust project, define core data structures, set up testing infrastructure, and create error handling framework",
+      "user_stories": ["US-001", "US-002", "US-003", "US-004", "US-005"]
+    },
+    {
+      "id": "phase-2",
+      "name": "Parser Implementation",
+      "description": "Build parsers for amounts, accounts, transactions, and complete ledger files with comprehensive error handling",
+      "user_stories": ["US-006", "US-007", "US-008", "US-009", "US-010"]
+    },
+    {
+      "id": "phase-3",
+      "name": "Accounting Engine",
+      "description": "Implement double-entry validation, balance calculation, account hierarchy, and balance assertions",
+      "user_stories": ["US-011", "US-012", "US-013", "US-014", "US-015"]
+    },
+    {
+      "id": "phase-4",
+      "name": "CLI & Basic Reports",
+      "description": "Build CLI interface with basic commands: validate, balance, register, and accounts",
+      "user_stories": ["US-016", "US-017", "US-018", "US-019", "US-020"]
+    },
+    {
+      "id": "phase-5",
+      "name": "Advanced Reports & Features",
+      "description": "Add advanced features including multi-currency support, financial reports, pattern filtering, and enhanced formatting",
+      "user_stories": ["US-021", "US-022", "US-023", "US-024", "US-025"]
+    }
+  ],
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Initialize Rust Project",
+      "description": "As a developer, I want to set up the Rust project structure with all necessary dependencies so that I have a solid foundation for development.",
+      "acceptanceCriteria": [
+        "Cargo.toml includes all required dependencies: clap, nom, rust_decimal, chrono, serde, anyhow, thiserror, colored, tabled, regex",
+        "Dev dependencies include: assert_cmd, predicates, tempfile",
+        "Directory structure created: src/{models,parser,engine,cli}, tests/{integration,fixtures}",
+        ".gitignore configured for Rust projects",
+        "README.md created with basic project description",
+        "`cargo build` succeeds without errors",
+        "All dependencies resolve correctly"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Define Amount Model",
+      "description": "As a developer, I want to define an Amount struct that can represent monetary values with commodities so that I can handle multi-currency transactions accurately.",
+      "acceptanceCriteria": [
+        "Amount struct created with Decimal value and commodity String",
+        "Arithmetic operations implemented: add, subtract, multiply, divide",
+        "Operations only work between amounts of same commodity",
+        "Display trait shows amounts in readable format (e.g., '$123.45' or '100.00 USD')",
+        "PartialEq and Eq traits implemented for comparison",
+        "Unit tests cover all arithmetic operations",
+        "Unit tests verify commodity checking in operations",
+        "Unit tests validate Display output format"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Define Account Model",
+      "description": "As a developer, I want to define an Account model with hierarchical structure so that I can organize accounts in a tree and infer account types from names.",
+      "acceptanceCriteria": [
+        "Account struct created with name and components vector",
+        "AccountType enum includes: Asset, Liability, Equity, Income, Expense",
+        "Type inference works from account name prefix (Assets:*, Liabilities:*, etc.)",
+        "Hierarchy parsing splits 'Assets:Bank:Checking' into ['Assets', 'Bank', 'Checking']",
+        "Methods to get parent account and check if account is child of another",
+        "Unit tests verify hierarchy operations",
+        "Unit tests verify type inference for all types",
+        "Unit tests handle edge cases (root accounts, deeply nested)"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Define Transaction and Posting Models",
+      "description": "As a developer, I want to define Transaction and Posting structs so that I can represent ledger transactions in memory.",
+      "acceptanceCriteria": [
+        "Transaction struct includes: date, status, payee, postings vector, metadata map",
+        "Posting struct includes: account, amount (Option), metadata map",
+        "Status enum includes: Cleared, Pending, Uncleared",
+        "Transaction requires at least date and payee",
+        "Posting requires account, amount is optional (for elided postings)",
+        "Unit tests verify model construction",
+        "Unit tests validate required fields",
+        "Derive Debug, Clone for all structs"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "Define Ledger Model and Error Framework",
+      "description": "As a developer, I want to define a Ledger struct and comprehensive error types so that I can manage the entire ledger state and handle errors gracefully.",
+      "acceptanceCriteria": [
+        "Ledger struct includes: transactions vector, accounts map, commodities set",
+        "Error types defined using thiserror: ParseError, ValidationError, EngineError",
+        "Each error type has descriptive variants with context",
+        "Result type aliases defined for convenience",
+        "Errors implement Display with helpful messages",
+        "Unit tests verify error creation and conversion",
+        "Unit tests verify error messages are descriptive"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Implement Amount Parser",
+      "description": "As a developer, I want to parse amount strings in various formats so that users can enter amounts naturally.",
+      "acceptanceCriteria": [
+        "Parses amounts with prefix symbols: $123.45, €50.00, £100",
+        "Parses amounts with suffix commodities: 123.45 USD, 50.00 EUR",
+        "Supports comma separators: $1,234.56",
+        "Supports negative amounts: -$50.00, $-50.00",
+        "Handles amounts without commodity (assumes default)",
+        "Returns Amount struct with parsed value and commodity",
+        "Unit tests cover all format variations",
+        "Parse errors provide helpful messages"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Implement Account Name Parser",
+      "description": "As a developer, I want to parse account names with hierarchy so that I can create Account structs from ledger text.",
+      "acceptanceCriteria": [
+        "Parses hierarchical names: 'Assets:Bank:Checking'",
+        "Validates account name format (no spaces, valid chars)",
+        "Splits name into components vector",
+        "Returns Account struct",
+        "Rejects invalid names (with spaces, special chars except colon)",
+        "Unit tests cover valid and invalid names",
+        "Parse errors identify specific issues"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Implement Transaction Parser",
+      "description": "As a developer, I want to parse complete transaction entries so that I can load transactions from ledger files.",
+      "acceptanceCriteria": [
+        "Parses date in YYYY-MM-DD format",
+        "Parses status markers: * (cleared), ! (pending), or none (uncleared)",
+        "Parses payee and optional description",
+        "Parses multiple postings with proper indentation",
+        "Parses metadata tags (; key: value)",
+        "Handles elided amounts (one posting without amount)",
+        "Returns Transaction struct with all postings",
+        "Unit tests cover complete and partial transactions",
+        "Parse errors include line and column numbers"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Implement Ledger File Parser",
+      "description": "As a developer, I want to parse complete ledger files so that users can load their entire ledger into the application.",
+      "acceptanceCriteria": [
+        "Parses multiple transactions from file",
+        "Skips comment lines starting with semicolon",
+        "Handles blank lines between transactions",
+        "Parses account declarations (optional)",
+        "Preserves transaction order by date",
+        "Returns Ledger struct with all transactions",
+        "Integration tests with sample ledger files",
+        "Parse errors show file, line, and column"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Enhanced Parser Error Handling",
+      "description": "As a user, I want clear, helpful error messages when my ledger file has parsing errors so that I can quickly fix issues.",
+      "acceptanceCriteria": [
+        "Error messages include filename, line number, and column number",
+        "Error messages show the problematic line of text",
+        "Error messages suggest corrections for common mistakes",
+        "Error messages are formatted clearly and consistently",
+        "Multiple errors can be collected and reported together",
+        "Integration tests verify error message quality",
+        "Manual testing confirms error messages are helpful"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "Implement Double-Entry Validator",
+      "description": "As a user, I want the system to validate that all transactions follow double-entry accounting rules so that my ledger is mathematically correct.",
+      "acceptanceCriteria": [
+        "Validates sum of postings equals zero for each commodity",
+        "Checks transaction has at least 2 postings",
+        "Validates account names follow conventions",
+        "Returns ValidationError with details for failures",
+        "Handles multi-currency transactions correctly",
+        "Unit tests for balanced transactions (pass)",
+        "Unit tests for unbalanced transactions (fail)",
+        "Unit tests for multi-currency validation"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "Handle Elided Postings",
+      "description": "As a user, I want to omit one amount in a transaction and have it calculated automatically so that I can enter transactions more quickly.",
+      "acceptanceCriteria": [
+        "Detects when exactly one posting has no amount",
+        "Calculates missing amount to balance transaction",
+        "Handles single-currency transactions with elision",
+        "Handles multi-currency transactions with elision",
+        "Returns error if multiple postings have no amount",
+        "Returns error if no posting can be elided",
+        "Unit tests for single and multi-currency elision",
+        "Unit tests for error cases"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "Implement Balance Calculator",
+      "description": "As a user, I want to calculate account balances from transaction history so that I can see my current financial position.",
+      "acceptanceCriteria": [
+        "Processes transactions in chronological order",
+        "Maintains running balance for each account",
+        "Supports multi-commodity balances per account",
+        "Can query balance at specific date",
+        "Returns zero balance for accounts with no transactions",
+        "Unit tests for simple ledgers (few transactions)",
+        "Unit tests for complex ledgers (many transactions, multiple accounts)",
+        "Unit tests for date-filtered balance queries"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "Implement Account Hierarchy",
+      "description": "As a user, I want to see account balances in a hierarchical tree where parent accounts show the sum of their children so that I can understand my finances at different levels of detail.",
+      "acceptanceCriteria": [
+        "Builds tree structure from flat account list",
+        "Calculates parent account balances as sum of children",
+        "Supports querying ancestors of an account",
+        "Supports querying descendants of an account",
+        "Handles accounts at any depth",
+        "Unit tests for tree construction",
+        "Unit tests for parent balance aggregation",
+        "Unit tests for ancestor/descendant queries"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-015",
+      "title": "Add Balance Assertions",
+      "description": "As a user, I want to add balance assertions to my ledger so that I can verify my calculated balances match real-world account statements.",
+      "acceptanceCriteria": [
+        "Parses balance assertion syntax in postings (e.g., '= $1000.00')",
+        "Validates calculated balance matches assertion",
+        "Supports assertions for specific commodities",
+        "Provides clear error message when assertion fails",
+        "Error includes expected vs actual balance",
+        "Unit tests for passing assertions",
+        "Unit tests for failing assertions",
+        "Unit tests verify error messages are helpful"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-016",
+      "title": "Build CLI Framework",
+      "description": "As a developer, I want to set up the CLI framework with clap so that I can implement user-facing commands.",
+      "acceptanceCriteria": [
+        "CLI defined using clap derive macros",
+        "Commands defined: balance, register, validate, accounts, stats",
+        "Global options: --file (ledger file path), --debug (verbose output)",
+        "Help text generated automatically by clap",
+        "--version flag shows version from Cargo.toml",
+        "Integration tests using assert_cmd",
+        "--help output is clear and informative"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-017",
+      "title": "Implement Validate Command",
+      "description": "As a user, I want to run a validate command to check my ledger for errors so that I can ensure my file is correct before using it.",
+      "acceptanceCriteria": [
+        "Command: `app validate --file ledger.txt`",
+        "Loads and parses ledger file",
+        "Runs all validation rules (double-entry, account names, etc.)",
+        "Prints success message if valid",
+        "Prints detailed errors if invalid (with line numbers)",
+        "Exits with code 0 on success, 1 on failure",
+        "CLI integration tests with valid ledger",
+        "CLI integration tests with invalid ledger"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-018",
+      "title": "Implement Balance Command",
+      "description": "As a user, I want to view account balances so that I can see my current financial position.",
+      "acceptanceCriteria": [
+        "Command: `app balance --file ledger.txt`",
+        "Shows all account balances in table format",
+        "Option --account to filter by regex pattern",
+        "Option --date to show historical balance",
+        "Option --tree to show hierarchical view",
+        "Multi-commodity balances displayed per account",
+        "Formatted using tabled crate for clean output",
+        "CLI integration tests verify output"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-019",
+      "title": "Implement Register Command",
+      "description": "As a user, I want to view transaction history for an account so that I can see all activity and running balance.",
+      "acceptanceCriteria": [
+        "Command: `app register --file ledger.txt --account Assets:Bank:Checking`",
+        "Shows transaction history for specified account",
+        "Options --start and --end for date filtering",
+        "Displays: date, payee, amount, running balance",
+        "Transactions shown in chronological order",
+        "Formatted as table using tabled",
+        "CLI integration tests verify output",
+        "Error if account doesn't exist"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-020",
+      "title": "Implement Accounts Command",
+      "description": "As a user, I want to list all accounts in my ledger so that I can see what accounts exist.",
+      "acceptanceCriteria": [
+        "Command: `app accounts --file ledger.txt`",
+        "Lists all accounts used in ledger",
+        "Option --tree shows hierarchical structure",
+        "Shows account types (Asset, Liability, etc.)",
+        "Accounts sorted alphabetically",
+        "Formatted clearly with proper indentation for tree view",
+        "CLI integration tests verify output"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-021",
+      "title": "Multi-Currency Support",
+      "description": "As a user, I want to handle transactions in multiple currencies so that I can track international finances accurately.",
+      "acceptanceCriteria": [
+        "Transactions can have postings in different commodities",
+        "Balance validation checks zero sum per commodity",
+        "Balance display shows all commodities for each account",
+        "Register shows amounts in original commodity",
+        "No automatic currency conversion (keep separate)",
+        "Integration tests with multi-currency ledger",
+        "All reports handle multi-currency correctly"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-022",
+      "title": "Implement Income Statement",
+      "description": "As a user, I want to generate an income statement so that I can see my revenue, expenses, and net income for a period.",
+      "acceptanceCriteria": [
+        "Command: `app income --file ledger.txt --start 2026-01-01 --end 2026-12-31`",
+        "Shows Revenue section (Income account balances)",
+        "Shows Expenses section (Expense account balances)",
+        "Calculates Net Income (Revenue - Expenses)",
+        "Supports hierarchical display of accounts",
+        "Formatted as professional report",
+        "CLI integration tests verify calculations",
+        "Handles multi-currency (separate per currency)"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-023",
+      "title": "Implement Balance Sheet",
+      "description": "As a user, I want to generate a balance sheet so that I can see my assets, liabilities, and equity at a specific date.",
+      "acceptanceCriteria": [
+        "Command: `app balance-sheet --file ledger.txt --date 2026-12-31`",
+        "Shows Assets section (Asset account balances)",
+        "Shows Liabilities section (Liability account balances)",
+        "Shows Equity section (Equity account balances)",
+        "Verifies Assets = Liabilities + Equity",
+        "Formatted as professional report",
+        "CLI integration tests verify calculations",
+        "Handles multi-currency"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-024",
+      "title": "Account Pattern Filtering",
+      "description": "As a user, I want to use regex patterns to filter accounts so that I can focus on specific account groups.",
+      "acceptanceCriteria": [
+        "All commands support --account option with regex",
+        "Pattern matches account names (e.g., 'Bank.*' matches all bank accounts)",
+        "Invalid regex shows helpful error message",
+        "Pattern matching is case-insensitive by default",
+        "Unit tests for pattern matching logic",
+        "CLI integration tests verify filtering works"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-025",
+      "title": "Output Formatting and Statistics",
+      "description": "As a user, I want well-formatted output with colors and statistics so that the CLI is pleasant to use and informative.",
+      "acceptanceCriteria": [
+        "Colored output for better readability (green for income, red for expenses)",
+        "Table borders and alignment using tabled",
+        "Command: `app stats --file ledger.txt` shows statistics",
+        "Stats include: transaction count, account count, date range, commodities used",
+        "Currency amounts formatted consistently (thousand separators, decimal places)",
+        "Option --no-color to disable colors",
+        "CLI integration tests verify formatting"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    }
+  ],
+  "technical_specifications": {
+    "language": "Rust",
+    "minimum_rust_version": "1.70",
+    "dependencies": {
+      "clap": "4.5",
+      "nom": "7.1",
+      "rust_decimal": "1.35",
+      "chrono": "0.4",
+      "serde": "1.0",
+      "anyhow": "1.0",
+      "thiserror": "1.0",
+      "colored": "2.1",
+      "tabled": "0.15",
+      "regex": "1.10"
+    },
+    "dev_dependencies": {
+      "assert_cmd": "2.0",
+      "predicates": "3.1",
+      "tempfile": "3.10"
+    },
+    "architecture": {
+      "modules": [
+        "models - Core data structures (Amount, Account, Transaction, Posting, Ledger)",
+        "parser - Text parsing using nom combinators",
+        "engine - Business logic (validation, balance calculation, hierarchy)",
+        "cli - Command-line interface using clap"
+      ],
+      "key_patterns": [
+        "Result-based error handling throughout",
+        "Parser combinators with nom for flexible text parsing",
+        "Separation of concerns (parsing, validation, calculation, display)",
+        "Immutable data structures where possible"
+      ]
+    },
+    "testing": {
+      "strategy": "Comprehensive unit and integration testing with 85%+ coverage target",
+      "unit_tests": "Test individual functions and modules in isolation",
+      "integration_tests": "Test complete workflows from file parsing to report generation",
+      "cli_tests": "Test command-line interface using assert_cmd",
+      "fixtures": "Sample ledger files for testing various scenarios"
+    }
+  },
+  "ledger_file_format": {
+    "description": "Plain text format similar to Ledger/hledger",
+    "transaction_format": "Date Status Payee\\n  Account  Amount\\n  Account  Amount",
+    "date_format": "YYYY-MM-DD",
+    "status_markers": {
+      "*": "Cleared",
+      "!": "Pending",
+      "none": "Uncleared"
+    },
+    "amount_formats": [
+      "$123.45 (prefix symbol)",
+      "123.45 USD (suffix commodity)",
+      "€50.00 (prefix symbol)",
+      "1,234.56 USD (with comma separator)"
+    ],
+    "account_hierarchy": "Colon-separated components (e.g., Assets:Bank:Checking)",
+    "comments": "Lines starting with semicolon (;)",
+    "metadata": "After posting or transaction, lines starting with semicolon and containing key: value",
+    "elided_amounts": "One posting per transaction can omit amount, will be calculated automatically",
+    "balance_assertions": "After amount in posting: = $1000.00"
+  },
+  "success_criteria": {
+    "functional": [
+      "Parse and validate complex ledger files with 100+ transactions",
+      "Correctly enforce double-entry accounting rules",
+      "Generate accurate financial reports (balance sheet, income statement)",
+      "Handle multi-currency transactions without automatic conversion",
+      "Provide clear error messages for all failure cases"
+    ],
+    "quality": [
+      "85%+ test coverage across all modules",
+      "All unit tests pass",
+      "All integration tests pass",
+      "No compiler warnings",
+      "Clean code following Rust idioms"
+    ],
+    "usability": [
+      "CLI is intuitive and well-documented",
+      "Help text is clear and comprehensive",
+      "Error messages help users fix problems quickly",
+      "Output is formatted professionally"
+    ]
+  }
+}
